@@ -1,0 +1,123 @@
+---
+# Source: data-service/templates/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: release-name-auth
+stringData:
+  LOG_FORMAT: json
+  LOG_LEVEL: debug
+---
+# Source: data-service/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: data-example
+  labels:
+    app.kubernetes.io/name: release-name
+    helm.sh/chart: release-name
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+
+    - port: 9123
+      targetPort: 9123
+      protocol: TCP
+      name: metric
+
+  selector:
+    app.kubernetes.io/name: release-name
+    app.kubernetes.io/instance: release-name
+---
+# Source: data-service/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: release-name-data-service
+  labels:
+    app.kubernetes.io/name: data-service
+    helm.sh/chart: data-service
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: data-service
+      app.kubernetes.io/instance: release-name
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: data-service
+        app.kubernetes.io/instance: release-name
+    spec:
+      containers:
+        - name: data-service
+          image: "gcr.io/adikastyle-dev/hello-cloudbuild:f930915"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: metric
+              containerPort: 9123
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: metric
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /
+              port: metric
+            initialDelaySeconds: 5
+          env:
+            - name: "LOG_FORMAT"
+              valueFrom:
+                secretKeyRef:
+                  key: LOG_FORMAT
+                  name: release-name-auth
+            - name: "LOG_LEVEL"
+              valueFrom:
+                secretKeyRef:
+                  key: LOG_LEVEL
+                  name: release-name-auth
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi
+---
+# Source: data-service/templates/scaler.yaml
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: release-name-data-service
+spec:
+  maxReplicas: 3
+  minReplicas: 1
+  scaleTargetRef:
+    apiVersion: extensions/v1
+    kind: Deployment
+    name: data-service
+  targetCPUUtilizationPercentage: 85
+---
+# Source: data-service/templates/monitor.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: sn-streams-adaptive
+  labels:
+    app.kubernetes.io/instance: "chart.name"
+    release: prom-1
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: "chart.name"
+  endpoints:
+    - port: metric           # works for different port numbers as long as the name matches
+      interval: 15s        # scrape the endpoint every 10 seconds
+  namespaceSelector:
+    matchNames:
+      - default
