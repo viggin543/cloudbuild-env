@@ -56,7 +56,7 @@ spec:
     spec:
       containers:
         - name: data-service
-          image: "gcr.io/adikastyle-dev/hello-cloudbuild:f930915"
+          image: "gcr.io/adikastyle-dev/hello-cloudbuild:a47477c"
           imagePullPolicy: IfNotPresent
           ports:
             - name: metric
