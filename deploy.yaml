@@ -21,12 +21,14 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-
     - port: 9123
       targetPort: 9123
       protocol: TCP
       name: metric
-
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+      name: rest
   selector:
     app.kubernetes.io/name: release-name
     app.kubernetes.io/instance: release-name
@@ -100,21 +102,21 @@ spec:
   scaleTargetRef:
     apiVersion: extensions/v1
     kind: Deployment
-    name: data-service
+    name: release-name-data-service
   targetCPUUtilizationPercentage: 85
 ---
 # Source: data-service/templates/monitor.yaml
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: sn-streams-adaptive
+  name: cicd-test
   labels:
-    app.kubernetes.io/instance: "chart.name"
+    app.kubernetes.io/instance: release-name
     release: prom-1
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: "chart.name"
+      app.kubernetes.io/name: release-name
   endpoints:
     - port: metric           # works for different port numbers as long as the name matches
       interval: 15s        # scrape the endpoint every 10 seconds
