@@ -115,7 +115,7 @@ metadata:
   name: cicd-test
   labels:
     app.kubernetes.io/instance: data-service-banana
-    release: prom-1
+    release: stg-eu-west1-prometheus-operator
 spec:
   selector:
     matchLabels:
